@@ -16,3 +16,12 @@ async def chat_with_mentor(request: ChatRequest):
         return {"response": response}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/mentor/history/{user_id}")
+async def get_chat_history(user_id: str, limit: int = 50):
+    try:
+        mentor = Mentor(user_id)
+        history = mentor.get_chat_history(user_id, limit)
+        return {"history": history}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
