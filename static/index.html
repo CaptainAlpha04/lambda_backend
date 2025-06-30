@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exercise Generator Test UI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+            padding: 30px;
+            border: 2px solid #f0f0f0;
+            border-radius: 10px;
+            background: #fafafa;
+        }
+
+        .section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        input[type="text"], input[type="file"], select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .response {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .response.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .response.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .response.info {
+            background: #e2e3e5;
+            border: 1px solid #d6d8db;
+            color: #383d41;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-indicator.ready {
+            background: #28a745;
+        }
+
+        .status-indicator.not-ready {
+            background: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎓 Exercise Generator Test UI</h1>
+            <p>Upload books, generate exercises, and test your RAG pipeline</p>
+        </div>
+
+        <div class="content">
+            <!-- Book Upload Section -->
+            <div class="section">
+                <h2>📚 Step 1: Upload Book</h2>
+                <div class="form-group">
+                    <label for="userId">User ID:</label>
+                    <input type="text" id="userId" placeholder="Enter user ID" value="test-user-123">
+                </div>
+                <div class="form-group">
+                    <label for="bookFile">Select PDF Book:</label>
+                    <input type="file" id="bookFile" accept=".pdf">
+                </div>
+                <button onclick="uploadBook()">Upload and Process Book</button>
+                <div class="loading" id="uploadLoading">
+                    <div class="spinner"></div>
+                    <p>Processing book... This may take a few minutes.</p>
+                </div>
+                <div id="uploadResponse"></div>
+            </div>
+
+            <!-- Exercise Generation Section -->
+            <div class="section">
+                <h2>🎯 Step 2: Generate Exercises</h2>
+                <div class="grid">
+                    <div>
+                        <div class="form-group">
+                            <label for="topic">Topic:</label>
+                            <input type="text" id="topic" placeholder="e.g., Machine Learning, Photosynthesis">
+                        </div>
+                        <div class="form-group">
+                            <label for="exerciseType">Exercise Type:</label>
+                            <select id="exerciseType">
+                                <option value="mcq">Multiple Choice Questions</option>
+                                <option value="true_false">True/False</option>
+                                <option value="short_answer">Short Answer</option>
+                                <option value="essay">Essay Questions</option>
+                                <option value="fill_blank">Fill in the Blanks</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="numQuestions">Number of Questions:</label>
+                            <select id="numQuestions">
+                                <option value="3">3</option>
+                                <option value="5" selected>5</option>
+                                <option value="10">10</option>
+                                <option value="15">15</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <p><span class="status-indicator" id="bookStatus"></span><strong>Book Status:</strong> <span id="bookStatusText">No book uploaded</span></p>
+                        <br>
+                        <button onclick="generateExercise()" style="width: 100%; margin-bottom: 10px;">Generate with Book Context</button>
+                        <button onclick="generateSimpleExercise()" style="width: 100%;">Generate without Book</button>
+                    </div>
+                </div>
+                <div class="loading" id="exerciseLoading">
+                    <div class="spinner"></div>
+                    <p>Generating exercises...</p>
+                </div>
+                <div id="exerciseResponse"></div>
+            </div>
+
+            <!-- Q&A Section -->
+            <div class="section">
+                <h2>❓ Step 3: Ask Questions About Book</h2>
+                <div class="form-group">
+                    <label for="question">Your Question:</label>
+                    <textarea id="question" rows="3" placeholder="Ask a specific question about the uploaded book..."></textarea>
+                </div>
+                <button onclick="askQuestion()">Ask Question</button>
+                <div class="loading" id="questionLoading">
+                    <div class="spinner"></div>
+                    <p>Finding answer...</p>
+                </div>
+                <div id="questionResponse"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api'; // Adjust this to your server URL
+        let bookUploaded = false;
+
+        function updateBookStatus(uploaded) {
+            bookUploaded = uploaded;
+            const indicator = document.getElementById('bookStatus');
+            const text = document.getElementById('bookStatusText');
+            
+            if (uploaded) {
+                indicator.className = 'status-indicator ready';
+                text.textContent = 'Book uploaded and ready';
+            } else {
+                indicator.className = 'status-indicator not-ready';
+                text.textContent = 'No book uploaded';
+            }
+        }
+
+        function showLoading(elementId, show = true) {
+            document.getElementById(elementId).style.display = show ? 'block' : 'none';
+        }
+
+        function showResponse(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.className = `response ${type}`;
+            element.textContent = message;
+            element.style.display = 'block';
+        }
+
+        async function uploadBook() {
+            const userId = document.getElementById('userId').value;
+            const fileInput = document.getElementById('bookFile');
+            const file = fileInput.files[0];
+
+            if (!userId) {
+                showResponse('uploadResponse', 'Please enter a User ID', 'error');
+                return;
+            }
+
+            if (!file) {
+                showResponse('uploadResponse', 'Please select a PDF file', 'error');
+                return;
+            }
+
+            if (!file.name.endsWith('.pdf')) {
+                showResponse('uploadResponse', 'Please select a PDF file', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('userId', userId);
+            formData.append('file', file);
+
+            showLoading('uploadLoading', true);
+            document.getElementById('uploadResponse').style.display = 'none';
+
+            try {
+                const response = await fetch(`${API_BASE}/exercise/upload-book`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResponse('uploadResponse', data.message, 'success');
+                    updateBookStatus(true);
+                } else {
+                    showResponse('uploadResponse', data.detail || 'Upload failed', 'error');
+                    updateBookStatus(false);
+                }
+            } catch (error) {
+                showResponse('uploadResponse', `Error: ${error.message}`, 'error');
+                updateBookStatus(false);
+            } finally {
+                showLoading('uploadLoading', false);
+            }
+        }
+
+        async function generateExercise() {
+            const userId = document.getElementById('userId').value;
+            const topic = document.getElementById('topic').value;
+            const exerciseType = document.getElementById('exerciseType').value;
+            const numQuestions = parseInt(document.getElementById('numQuestions').value);
+
+            if (!userId || !topic) {
+                showResponse('exerciseResponse', 'Please enter User ID and Topic', 'error');
+                return;
+            }
+
+            const requestData = {
+                userId,
+                topic,
+                exercise_type: exerciseType,
+                num_questions: numQuestions
+            };
+
+            showLoading('exerciseLoading', true);
+            document.getElementById('exerciseResponse').style.display = 'none';
+
+            try {
+                const response = await fetch(`${API_BASE}/exercise/generate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResponse('exerciseResponse', data.exercises, 'success');
+                } else {
+                    showResponse('exerciseResponse', data.detail || 'Generation failed', 'error');
+                }
+            } catch (error) {
+                showResponse('exerciseResponse', `Error: ${error.message}`, 'error');
+            } finally {
+                showLoading('exerciseLoading', false);
+            }
+        }
+
+        async function generateSimpleExercise() {
+            const userId = document.getElementById('userId').value;
+            const topic = document.getElementById('topic').value;
+            const exerciseType = document.getElementById('exerciseType').value;
+            const numQuestions = parseInt(document.getElementById('numQuestions').value);
+
+            if (!userId || !topic) {
+                showResponse('exerciseResponse', 'Please enter User ID and Topic', 'error');
+                return;
+            }
+
+            const requestData = {
+                userId,
+                topic,
+                exercise_type: exerciseType,
+                num_questions: numQuestions
+            };
+
+            showLoading('exerciseLoading', true);
+            document.getElementById('exerciseResponse').style.display = 'none';
+
+            try {
+                const response = await fetch(`${API_BASE}/exercise/generate-simple`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResponse('exerciseResponse', data.exercises, 'success');
+                } else {
+                    showResponse('exerciseResponse', data.detail || 'Generation failed', 'error');
+                }
+            } catch (error) {
+                showResponse('exerciseResponse', `Error: ${error.message}`, 'error');
+            } finally {
+                showLoading('exerciseLoading', false);
+            }
+        }
+
+        async function askQuestion() {
+            const userId = document.getElementById('userId').value;
+            const question = document.getElementById('question').value;
+
+            if (!userId || !question) {
+                showResponse('questionResponse', 'Please enter User ID and Question', 'error');
+                return;
+            }
+
+            if (!bookUploaded) {
+                showResponse('questionResponse', 'Please upload a book first to ask questions about it', 'error');
+                return;
+            }
+
+            const requestData = {
+                userId,
+                question
+            };
+
+            showLoading('questionLoading', true);
+            document.getElementById('questionResponse').style.display = 'none';
+
+            try {
+                const response = await fetch(`${API_BASE}/exercise/ask`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResponse('questionResponse', data.answer, 'success');
+                } else {
+                    showResponse('questionResponse', data.detail || 'Question failed', 'error');
+                }
+            } catch (error) {
+                showResponse('questionResponse', `Error: ${error.message}`, 'error');
+            } finally {
+                showLoading('questionLoading', false);
+            }
+        }
+
+        // Initialize status
+        updateBookStatus(false);
+    </script>
+</body>
+</html>
