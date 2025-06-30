@@ -1,0 +1,122 @@
+from google import genai
+from google.genai import types
+import os
+import dotenv
+from utils.rag import RAGProcessor
+
+dotenv.load_dotenv()
+
+class GenerateExercise:
+    def __init__(self, userId):
+        self.userId = userId
+        self.client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+        self.chat = self.client.chats.create(model="gemini-2.0-flash")
+        self.rag_processor = RAGProcessor()
+        
+    def upload_and_process_book(self, pdf_file):
+        """Upload and process a PDF book for RAG"""
+        try:
+            success = self.rag_processor.process_document(pdf_file)
+            if success:
+                return {"status": "success", "message": "Book uploaded and indexed successfully"}
+            else:
+                return {"status": "error", "message": "Failed to process the book"}
+        except Exception as e:
+            print(f"Error uploading book: {e}")
+            return {"status": "error", "message": str(e)}
+    
+    def generate_exercise_with_context(self, topic, exercise_type="mcq", num_questions=5):
+        """Generate exercises based on uploaded book content"""
+        try:
+            # Retrieve relevant context from the book
+            context_chunks = self.rag_processor.retrieve_top_chunks(topic, k=10)
+            
+            if not context_chunks:
+                return self.generate_exercise_without_context(topic, exercise_type, num_questions)
+            
+            # Prepare context for the AI
+            context = "\n\n".join(context_chunks)
+            
+            # Create enhanced prompt with context
+            enhanced_prompt = f"""
+            Based on the following book content, create {num_questions} {exercise_type} questions about: {topic}
+            
+            Book Content:
+            {context}
+            
+            Topic: {topic}
+            Exercise Type: {exercise_type}
+            Number of Questions: {num_questions}
+            """
+            
+            # Generate AI response with context
+            response = self.chat.send_message(
+                message=enhanced_prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=os.getenv("EXERCISE_SYSTEM_INSTRUCTION"),
+                )
+            )
+            
+            return response.text
+            
+        except Exception as e:
+            print(f"Error generating exercise with context: {e}")
+            return "Sorry, there was an error generating the exercise with book context."
+    
+    def generate_exercise_without_context(self, topic, exercise_type="mcq", num_questions=5):
+        """Generate exercises without book context (fallback)"""
+        try:
+            prompt = f"Create {num_questions} {exercise_type} questions about: {topic}"
+            
+            response = self.chat.send_message(
+                message=prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=os.getenv("EXERCISE_SYSTEM_INSTRUCTION"),
+                )
+            )
+            
+            return response.text
+            
+        except Exception as e:
+            print(f"Error generating exercise: {e}")
+            return "Sorry, there was an error generating the exercise."
+    
+    def chat_with_mentor(self, topic):
+        """Original method for backward compatibility"""
+        return self.generate_exercise_with_context(topic)
+    
+    def ask_question_about_book(self, question):
+        """Ask a specific question about the uploaded book"""
+        try:
+            # Retrieve relevant context
+            context_chunks = self.rag_processor.retrieve_top_chunks(question, k=5)
+            
+            if not context_chunks:
+                return "No relevant content found in the uploaded book for your question."
+            
+            context = "\n\n".join(context_chunks)
+            
+            # Create prompt for Q&A
+            qa_prompt = f"""
+            Based on the following book content, answer the question:
+            
+            Book Content:
+            {context}
+            
+            Question: {question}
+            
+            Please provide a comprehensive answer based on the book content.
+            """
+            
+            response = self.chat.send_message(
+                message=qa_prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction="You are a helpful assistant that answers questions based on provided book content. Be accurate and cite the relevant parts of the content when possible.",
+                )
+            )
+            
+            return response.text
+            
+        except Exception as e:
+            print(f"Error answering question: {e}")
+            return "Sorry, there was an error processing your question."

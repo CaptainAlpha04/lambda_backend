@@ -4,3 +4,8 @@ pydantic==2.5.0
 python-dotenv==1.0.0
 supabase==2.3.0
 google-generativeai==0.3.2
+sentence-transformers==2.2.2
+faiss-cpu==1.7.4
+PyMuPDF==1.23.0
+numpy==1.24.3
+markdown2==2.4.10
