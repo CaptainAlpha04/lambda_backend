@@ -43,6 +43,9 @@ async def generate_exercise(request: ExerciseRequest):
             exercise_type=request.exercise_type,
             num_questions=request.num_questions
         )
+        
+        print("Generated Exercises:", exercises)
+        
         return {"exercises": exercises}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -3,6 +3,7 @@ from google.genai import types
 import os
 import dotenv
 from utils.rag import RAGProcessor
+from utils.helper import clean_content
 
 dotenv.load_dotenv()
 
@@ -37,6 +38,8 @@ class GenerateExercise:
             # Prepare context for the AI
             context = "\n\n".join(context_chunks)
             
+            print("Context for Exercise Generation:", context)
+
             # Create enhanced prompt with context
             enhanced_prompt = f"""
             Based on the following book content, create {num_questions} {exercise_type} questions about: {topic}
@@ -48,17 +51,19 @@ class GenerateExercise:
             Exercise Type: {exercise_type}
             Number of Questions: {num_questions}
             """
+
+            print("Enhanced Prompt:", enhanced_prompt)
             
             # Generate AI response with context
             response = self.chat.send_message(
-                message=enhanced_prompt,
+                contents=enhanced_prompt,
                 config=types.GenerateContentConfig(
                     system_instruction=os.getenv("EXERCISE_SYSTEM_INSTRUCTION"),
                 )
             )
-            
-            return response.text
-            
+
+            return clean_content(response.text)
+
         except Exception as e:
             print(f"Error generating exercise with context: {e}")
             return "Sorry, there was an error generating the exercise with book context."
@@ -74,9 +79,9 @@ class GenerateExercise:
                     system_instruction=os.getenv("EXERCISE_SYSTEM_INSTRUCTION"),
                 )
             )
-            
-            return response.text
-            
+
+            return clean_content(response.text)
+
         except Exception as e:
             print(f"Error generating exercise: {e}")
             return "Sorry, there was an error generating the exercise."

@@ -30,5 +30,5 @@ async def read_root():
 
 @app.get("/test")
 async def serve_test_ui():
-    """Serve the test UI"""
+    """Serve the static HTML file for testing"""
     return FileResponse('static/index.html')
