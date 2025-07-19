@@ -1,17 +1,22 @@
-from google import genai
-from google.genai import types
+import google.generativeai as genai
+from google.generativeai import types
 import os
 import dotenv
 from utils.rag import RAGProcessor
 from utils.helper import clean_content
+import logging
 
 dotenv.load_dotenv()
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class GenerateExercise:
     def __init__(self, userId):
         self.userId = userId
-        self.client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-        self.chat = self.client.chats.create(model="gemini-2.0-flash")
+        genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+        self.model = genai.GenerativeModel("gemini-2.0-flash")
         self.rag_processor = RAGProcessor()
         
     def upload_and_process_book(self, pdf_file):
@@ -38,7 +43,7 @@ class GenerateExercise:
             # Prepare context for the AI
             context = "\n\n".join(context_chunks)
             
-            print("Context for Exercise Generation:", context)
+            logger.info(f"Context for Exercise Generation: {context}")
 
             # Create enhanced prompt with context
             enhanced_prompt = f"""
@@ -52,20 +57,24 @@ class GenerateExercise:
             Number of Questions: {num_questions}
             """
 
-            print("Enhanced Prompt:", enhanced_prompt)
+            logger.info(f"Enhanced Prompt: {enhanced_prompt}")
             
             # Generate AI response with context
-            response = self.chat.send_message(
-                contents=enhanced_prompt,
-                config=types.GenerateContentConfig(
-                    system_instruction=os.getenv("EXERCISE_SYSTEM_INSTRUCTION"),
+            system_instruction = os.getenv("EXERCISE_SYSTEM_INSTRUCTION")
+            full_prompt = f"{system_instruction}\n\n{enhanced_prompt}" if system_instruction else enhanced_prompt
+            response = self.model.generate_content(
+                contents=full_prompt,
+                generation_config=types.GenerationConfig(
+                    # Add other config params here if needed
                 )
             )
-
-            return clean_content(response.text)
+            logger.info(f"Raw AI response: {getattr(response, 'text', repr(response))}")
+            cleaned = clean_content(response.text)
+            logger.info(f"Cleaned content: {cleaned}")
+            return cleaned
 
         except Exception as e:
-            print(f"Error generating exercise with context: {e}")
+            logger.error(f"Error generating exercise with context: {e}")
             return "Sorry, there was an error generating the exercise with book context."
     
     def generate_exercise_without_context(self, topic, exercise_type="mcq", num_questions=5):
@@ -73,17 +82,21 @@ class GenerateExercise:
         try:
             prompt = f"Create {num_questions} {exercise_type} questions about: {topic}"
             
-            response = self.chat.send_message(
-                message=prompt,
-                config=types.GenerateContentConfig(
-                    system_instruction=os.getenv("EXERCISE_SYSTEM_INSTRUCTION"),
+            system_instruction = os.getenv("EXERCISE_SYSTEM_INSTRUCTION")
+            full_prompt = f"{system_instruction}\n\n{prompt}" if system_instruction else prompt
+            response = self.model.generate_content(
+                contents=full_prompt,
+                generation_config=types.GenerationConfig(
+                    # Add other config params here if needed
                 )
             )
-
-            return clean_content(response.text)
+            logger.info(f"Raw AI response (no context): {getattr(response, 'text', repr(response))}")
+            cleaned = clean_content(response.text)
+            logger.info(f"Cleaned content (no context): {cleaned}")
+            return cleaned
 
         except Exception as e:
-            print(f"Error generating exercise: {e}")
+            logger.error(f"Error generating exercise: {e}")
             return "Sorry, there was an error generating the exercise."
     
     def chat_with_mentor(self, topic):
@@ -113,10 +126,12 @@ class GenerateExercise:
             Please provide a comprehensive answer based on the book content.
             """
             
-            response = self.chat.send_message(
-                message=qa_prompt,
-                config=types.GenerateContentConfig(
-                    system_instruction="You are a helpful assistant that answers questions based on provided book content. Be accurate and cite the relevant parts of the content when possible.",
+            system_instruction = "You are a helpful assistant that answers questions based on provided book content. Be accurate and cite the relevant parts of the content when possible."
+            full_prompt = f"{system_instruction}\n\n{qa_prompt}"
+            response = self.model.generate_content(
+                contents=full_prompt,
+                generation_config=types.GenerationConfig(
+                    # Add other config params here if needed
                 )
             )
             
