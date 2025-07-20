@@ -103,7 +103,7 @@ class GenerateExercise:
             cleaned = clean_content(response.text)
             logger.info(f"Cleaned content (no context): {cleaned}")
             return cleaned
-
+ 
         except Exception as e:
             logger.error(f"Error generating exercise: {e}")
             return "Sorry, there was an error generating the exercise."
