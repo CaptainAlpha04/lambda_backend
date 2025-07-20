@@ -47,11 +47,20 @@ class GenerateExercise:
 
             # Create enhanced prompt with context
             enhanced_prompt = f"""
-            Based on the following book content, create {num_questions} {exercise_type} questions about: {topic}
-            
+            Based on the following book content, create {num_questions} {exercise_type} questions about: {topic}.
+
+            For each question, provide:
+            - The question text
+            - Four options labeled a), b), c), d)
+            At the end, include an 'Answer Key' section in the following format:
+            Answer Key:
+            1. b
+            2. c
+            ...
+
             Book Content:
             {context}
-            
+
             Topic: {topic}
             Exercise Type: {exercise_type}
             Number of Questions: {num_questions}
@@ -80,7 +89,7 @@ class GenerateExercise:
     def generate_exercise_without_context(self, topic, exercise_type="mcq", num_questions=5):
         """Generate exercises without book context (fallback)"""
         try:
-            prompt = f"Create {num_questions} {exercise_type} questions about: {topic}"
+            prompt = f"Create {num_questions} {exercise_type} questions about: {topic}. For each question, provide four options labeled a), b), c), d). At the end, include an 'Answer Key' section in the following format:\nAnswer Key:\n1. b\n2. c\n..."
             
             system_instruction = os.getenv("EXERCISE_SYSTEM_INSTRUCTION")
             full_prompt = f"{system_instruction}\n\n{prompt}" if system_instruction else prompt

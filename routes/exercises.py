@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import Optional
 import logging
 from controller import supabase
+from utils.helper import parse_mcq_text, parse_sqs_text, parse_lqs_text, parse_blanks_text, parse_true_false_text
 
 router = APIRouter()
 
@@ -51,6 +52,26 @@ async def generate_exercise(request: ExerciseRequest):
             num_questions=request.num_questions
         )
         logger.info(f"Generated exercises: {exercises}")
+        # If MCQ, parse to array
+        if request.exercise_type.lower() in ["multiple choice", "mcq", "mcqs"]:
+            if isinstance(exercises, str):
+                exercises = parse_mcq_text(exercises)
+        # If True/False, parse to array
+        elif request.exercise_type.lower() in ["true/false", "true_false", "true false", "tf"]:
+            if isinstance(exercises, str):
+                exercises = parse_true_false_text(exercises)
+        # If SQS, parse to array
+        elif request.exercise_type.lower() in ["short answer", "short_questions", "short question", "sqs"]:
+            if isinstance(exercises, str):
+                exercises = parse_sqs_text(exercises)
+        # If LQS, parse to array
+        elif request.exercise_type.lower() in ["long questions", "long_questions", "long question", "lqs"]:
+            if isinstance(exercises, str):
+                exercises = parse_lqs_text(exercises)
+        # If Fill in the Blanks, parse to array
+        elif request.exercise_type.lower() in ["fill in the blanks", "fill_blanks", "fill blank", "blanks"]:
+            if isinstance(exercises, str):
+                exercises = parse_blanks_text(exercises)
         if not exercises:
             exercises = "Sorry, no exercises could be generated."
         return {"exercises": exercises}
@@ -78,6 +99,26 @@ async def generate_simple_exercise(request: ExerciseRequest):
             exercise_type=request.exercise_type,
             num_questions=request.num_questions
         )
+        # If MCQ, parse to array
+        if request.exercise_type.lower() in ["multiple choice", "mcq", "mcqs"]:
+            if isinstance(exercises, str):
+                exercises = parse_mcq_text(exercises)
+        # If True/False, parse to array
+        elif request.exercise_type.lower() in ["true/false", "true_false", "true false", "tf"]:
+            if isinstance(exercises, str):
+                exercises = parse_true_false_text(exercises)
+        # If SQS, parse to array
+        elif request.exercise_type.lower() in ["short answer", "short_questions", "short question", "sqs"]:
+            if isinstance(exercises, str):
+                exercises = parse_sqs_text(exercises)
+        # If LQS, parse to array
+        elif request.exercise_type.lower() in ["long questions", "long_questions", "long question", "lqs"]:
+            if isinstance(exercises, str):
+                exercises = parse_lqs_text(exercises)
+        # If Fill in the Blanks, parse to array
+        elif request.exercise_type.lower() in ["fill in the blanks", "fill_blanks", "fill blank", "blanks"]:
+            if isinstance(exercises, str):
+                exercises = parse_blanks_text(exercises)
         return {"exercises": exercises}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -102,17 +143,12 @@ async def save_exercise(
                     "subject": subject,
                     "topic": topic,
                     "sub_topic": sub_topic,
-                    "question": ex["question"]
+                    "question": ex["question"],
+                    "options": ex.get("options", []),  # Store as JSON
+                    "correct_answer": ex.get("correct", "")  # Store as text
                 }
-                mcq_result = supabase.table("mcqs").insert(mcq).execute()
-                mcq_id = mcq_result.data[0]["id"]
-                for opt in ex.get("options", []):
-                    supabase.table("mcq_options").insert({
-                        "mcq_id": mcq_id,
-                        "option": opt,
-                        "is_correct": (opt == ex.get("correct"))
-                    }).execute()
-        elif exerciseType.lower() in ["fill in the blanks", "fill_blanks", "fill blank"]:
+                supabase.table("mcqs").insert(mcq).execute()
+        elif exerciseType.lower() in ["fill in the blanks", "fill_blanks", "fill blank", "blanks"]:
             for ex in exerciseData:
                 if not ex.get("question"):
                     continue
@@ -124,14 +160,8 @@ async def save_exercise(
                     "question": ex["question"],
                     "answer": ex.get("answer", "")
                 }
-                fb_result = supabase.table("fill_blanks").insert(fill_blank).execute()
-                fb_id = fb_result.data[0]["id"]
-                for opt in ex.get("blanks", []):
-                    supabase.table("fill_blank_options").insert({
-                        "fill_blank_id": fb_id,
-                        "option": opt
-                    }).execute()
-        elif exerciseType.lower() in ["short answer", "short_questions", "short question"]:
+                supabase.table("fill_blanks").insert(fill_blank).execute()
+        elif exerciseType.lower() in ["short answer", "short_questions", "short question", "sqs"]:
             for ex in exerciseData:
                 if not ex.get("question"):
                     continue
@@ -140,12 +170,10 @@ async def save_exercise(
                     "subject": subject,
                     "topic": topic,
                     "sub_topic": sub_topic,
-                    "question": ex["question"],
-                    "answer": ex.get("answer", ""),
-                    "diagram": ex.get("diagram", "")
+                    "question": ex["question"]
                 }
                 supabase.table("short_questions").insert(short_q).execute()
-        elif exerciseType.lower() in ["essay", "long_questions", "long question"]:
+        elif exerciseType.lower() in ["long questions", "long_questions", "long question", "lqs"]:
             for ex in exerciseData:
                 if not ex.get("question"):
                     continue
@@ -154,12 +182,22 @@ async def save_exercise(
                     "subject": subject,
                     "topic": topic,
                     "sub_topic": sub_topic,
-                    "question": ex["question"],
-                    "definition": ex.get("definition", ""),
-                    "explanation": ex.get("explanation", ""),
-                    "diagram": ex.get("diagram", "")
+                    "question": ex["question"]
                 }
                 supabase.table("long_questions").insert(long_q).execute()
+        elif exerciseType.lower() in ["true/false", "true_false", "true false", "tf"]:
+            for ex in exerciseData:
+                if not ex.get("question"):
+                    continue
+                tf_q = {
+                    "grade": grade,
+                    "subject": subject,
+                    "topic": topic,
+                    "sub_topic": sub_topic,
+                    "question": ex["question"],
+                    "answer": ex.get("answer", "")
+                }
+                supabase.table("true_false").insert(tf_q).execute()
         else:
             print("Saving as generic exercise:", exerciseData)
         return {"message": "Exercises saved successfully!"}
