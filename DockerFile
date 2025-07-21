@@ -1,21 +1,23 @@
-# Use an official Python base image
-FROM python:3.11-slim
+FROM python:3.12-slim
 
-# Set working directory
 WORKDIR /app
 
-# Install build dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends gcc
+# Install system dependencies needed by pip and build tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    python3-dev \
+    python3-pip \
+    python3-distutils \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install them
+# Copy and install Python dependencies
 COPY requirements.txt .
+RUN pip install --upgrade pip setuptools wheel
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the code
+# Copy the rest of your code
 COPY . .
 
-# Expose port
 EXPOSE 8000
 
-# Start the FastAPI app
 CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]
