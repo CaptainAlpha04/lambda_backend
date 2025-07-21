@@ -74,6 +74,7 @@ async def generate_exercise(request: ExerciseRequest):
         elif request.exercise_type.lower() in ["fill in the blanks", "fill_blanks", "fill blank", "blanks"]:
             if isinstance(exercises, str):
                 exercises = parse_blanks_text(exercises)
+
         if not exercises:
             exercises = "Sorry, no exercises could be generated."
         return {"exercises": exercises}
