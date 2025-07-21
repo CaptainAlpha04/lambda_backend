@@ -16,6 +16,7 @@ class ExerciseRequest(BaseModel):
     userId: str
     topic: str
     exercise_type: Optional[str] = "mcq"
+    difficulty_level: Optional[str] = "medium"
     num_questions: Optional[int] = 5
 
 class QuestionRequest(BaseModel):
@@ -49,7 +50,8 @@ async def generate_exercise(request: ExerciseRequest):
         exercises = exercise_generator.generate_exercise_with_context(
             topic=request.topic,
             exercise_type=request.exercise_type,
-            num_questions=request.num_questions
+            num_questions=request.num_questions,
+            difficulty_level=request.difficulty_level
         )
         logger.info(f"Generated exercises: {exercises}")
         # If MCQ, parse to array

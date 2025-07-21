@@ -31,7 +31,7 @@ class GenerateExercise:
             print(f"Error uploading book: {e}")
             return {"status": "error", "message": str(e)}
     
-    def generate_exercise_with_context(self, topic, exercise_type="mcq", num_questions=5):
+    def generate_exercise_with_context(self, topic, exercise_type="mcq", num_questions=5, difficulty_level="medium"):
         """Generate exercises based on uploaded book content"""
         try:
             # Retrieve relevant context from the book
@@ -45,11 +45,11 @@ class GenerateExercise:
             
             logger.info(f"Context for Exercise Generation: {context}")
 
-            # Create enhanced prompt with context
-            enhanced_prompt = f"""
+            # User prompt for MCQ generation
+            mcq_prompt = f"""
             Based on the following book content, create {num_questions} {exercise_type} questions about: {topic}.
 
-            For each question, provide:
+            For MCQs each question, provide:
             - The question text
             - Four options labeled a), b), c), d)
             At the end, include an 'Answer Key' section in the following format:
@@ -64,17 +64,32 @@ class GenerateExercise:
             Topic: {topic}
             Exercise Type: {exercise_type}
             Number of Questions: {num_questions}
+            Difficulty Level: {difficulty_level}
             """
 
-            logger.info(f"Enhanced Prompt: {enhanced_prompt}")
+            # user prompt for other types of exercises
+            normal_prompt= f"""
+            Based on the following book content, create {num_questions} {exercise_type} questions about: {topic}.
+            For each question, provide the necessary details as per the exercise type.
+
+            Book Content:
+            {context}
+
+            Topic: {topic}
+            Exercise Type: {exercise_type}
+            Number of Questions: {num_questions}
+            """
+
+            logger.info(f"Enhanced Prompt: {mcq_prompt if exercise_type == 'mcq' else normal_prompt}")
             
+            logger.info(f"Context Chunks Retrieved: {len(context_chunks)}")
+
             # Generate AI response with context
             system_instruction = os.getenv("EXERCISE_SYSTEM_INSTRUCTION")
-            full_prompt = f"{system_instruction}\n\n{enhanced_prompt}" if system_instruction else enhanced_prompt
             response = self.model.generate_content(
-                contents=full_prompt,
+                contents=mcq_prompt if exercise_type == "mcq" else normal_prompt,
                 generation_config=types.GenerationConfig(
-                    # Add other config params here if needed
+                    system_instruction=system_instruction
                 )
             )
             logger.info(f"Raw AI response: {getattr(response, 'text', repr(response))}")
