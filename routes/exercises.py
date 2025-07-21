@@ -201,6 +201,34 @@ async def save_exercise(
                     "answer": ex.get("answer", "")
                 }
                 supabase.table("true_false").insert(tf_q).execute()
+        elif exerciseType.lower() in ["match the columns", "match_columns", "match the column", "match columns"]:
+            for ex in exerciseData:
+                if not ex.get("columnA") or not ex.get("columnB"):
+                    continue
+                match_columns = {
+                    "grade": grade,
+                    "subject": subject,
+                    "topic": topic,
+                    "sub_topic": sub_topic,
+                    "columna": ex.get("columnA", []),  # Store as JSON
+                    "columnb": ex.get("columnB", []),  # Store as JSON
+                    "answers": ex.get("answers", {})  # Store as JSON (mapping)
+                }
+                supabase.table("match_columns").insert(match_columns).execute()
+        elif exerciseType.lower() in ["flashcards", "flashcard"]:
+            for ex in exerciseData:
+                if not ex.get("question"):
+                    continue
+                flashcard = {
+                    "grade": grade,
+                    "subject": subject,
+                    "topic": topic,
+                    "sub_topic": sub_topic,
+                    "question": ex.get("question", ""),
+                    "hint": ex.get("hint", ""),
+                    "answer": ex.get("answer", "")
+                }
+                supabase.table("flashcards").insert(flashcard).execute()
         else:
             print("Saving as generic exercise:", exerciseData)
         return {"message": "Exercises saved successfully!"}
