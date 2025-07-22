@@ -1,3 +1,4 @@
+# railway.toml
 [build]
 builder = "nixpacks"
 
@@ -6,3 +7,26 @@ healthcheckPath = "/"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
 startCommand = "uvicorn server:app --host 0.0.0.0 --port $PORT"
+
+[nixpacks]
+# Specify the Python version explicitly for Nixpacks
+# Using 3.11 for now, as 3.12 has more distutils complexities
+# We can try 3.12 again if 3.11 works and you absolutely need 3.12 features.
+packages = ["python311", "python311Packages.pip"] # Ensure pip for 3.11 is there
+
+[nixpacks.phases.setup]
+# This ensures build-time dependencies like setuptools are present at a system level
+# and then activates the virtual environment.
+cmds = [
+    "apk add --no-cache python3-dev build-base", # Common build tools for Python C extensions
+    "python3.11 -m venv /opt/venv",
+    ". /opt/venv/bin/activate"
+]
+
+[nixpacks.phases.install]
+# Ensure pip is upgraded and setuptools is installed very early
+cmds = [
+    "pip install --upgrade pip",
+    "pip install setuptools wheel", # wheel is often needed for building sdist
+    "pip install -r requirements.txt"
+]
