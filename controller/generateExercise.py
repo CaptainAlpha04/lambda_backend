@@ -164,3 +164,175 @@ class GenerateExercise:
         except Exception as e:
             print(f"Error answering question: {e}")
             return "Sorry, there was an error processing your question."
+    
+    def generate_notes_with_context(self, topic, num_notes=5, difficulty_level="medium"):
+        """Generate important notes based on uploaded book content"""
+        try:
+            # Retrieve relevant context from the book
+            context_chunks = self.rag_processor.retrieve_top_chunks(topic, k=15)
+            
+            if not context_chunks:
+                return self.generate_notes_without_context(topic, num_notes)
+            
+            # Prepare context for the AI
+            context = "\n\n".join(context_chunks)
+            
+            logger.info(f"Context for Notes Generation: {context}")
+            logger.info(f"Context Chunks Retrieved: {len(context_chunks)}")
+
+            # User prompt for notes generation
+            notes_prompt = f"""
+            Based on the following book content, create {num_notes} important section notes about: {topic}.
+
+            For each note section, provide:
+            - A clear, descriptive title
+            - A brief subtitle (optional)
+            - 3-5 key points (bullet points)
+            - A concise summary paragraph
+            - 2-4 important concepts/tags
+
+            Format the response as a JSON array where each note has this structure:
+            {{
+                "title": "Section Title",
+                "subtitle": "Brief description (optional)",
+                "keyPoints": ["Point 1", "Point 2", "Point 3"],
+                "summary": "Brief summary paragraph",
+                "importantConcepts": ["Concept 1", "Concept 2", "Concept 3"]
+            }}
+
+            Book Content:
+            {context}
+
+            Topic: {topic}
+            Number of Notes: {num_notes}
+            Difficulty Level: {difficulty_level}
+            """
+
+            logger.info(f"Notes Generation Prompt: {notes_prompt}")
+            
+            # Generate AI response with context
+            system_instruction = "You are an expert educational content creator. Generate well-structured, comprehensive notes that capture the most important information from the provided book content. Focus on clarity, accuracy, and educational value."
+            response = self.model.generate_content(
+                contents=notes_prompt,
+                generation_config=types.GenerationConfig(
+                    system_instruction=system_instruction
+                )
+            )
+            
+            logger.info(f"Raw AI response for notes: {getattr(response, 'text', repr(response))}")
+            
+            # Try to parse JSON response
+            try:
+                import json
+                import re
+                
+                # Clean the response text to extract JSON
+                response_text = response.text.strip()
+                
+                # Remove markdown code blocks if present
+                if response_text.startswith('```json'):
+                    response_text = response_text[7:]  # Remove ```json
+                if response_text.startswith('```'):
+                    response_text = response_text[3:]   # Remove ```
+                if response_text.endswith('```'):
+                    response_text = response_text[:-3]  # Remove trailing ```
+                
+                # Try to find JSON array in the text
+                json_match = re.search(r'\[.*\]', response_text, re.DOTALL)
+                if json_match:
+                    response_text = json_match.group(0)
+                
+                notes_data = json.loads(response_text)
+                if isinstance(notes_data, list):
+                    # Add IDs to each note
+                    for i, note in enumerate(notes_data, 1):
+                        note['id'] = i
+                    return notes_data
+                else:
+                    # If not a list, wrap in array
+                    notes_data['id'] = 1
+                    return [notes_data]
+            except (json.JSONDecodeError, AttributeError) as e:
+                logger.error(f"JSON parsing failed: {e}")
+                # If JSON parsing fails, return as text format
+                cleaned = clean_content(response.text)
+                return [{"id": 1, "type": "Text", "content": cleaned}]
+
+        except Exception as e:
+            logger.error(f"Error generating notes with context: {e}")
+            return self.generate_notes_without_context(topic, num_notes)
+    
+    def generate_notes_without_context(self, topic, num_notes=5):
+        """Generate notes without book context (fallback)"""
+        try:
+            prompt = f"""
+            Create {num_notes} important section notes about: {topic}.
+
+            For each note section, provide:
+            - A clear, descriptive title
+            - A brief subtitle (optional)
+            - 3-5 key points (bullet points)
+            - A concise summary paragraph
+            - 2-4 important concepts/tags
+
+            Format the response as a JSON array where each note has this structure:
+            {{
+                "title": "Section Title",
+                "subtitle": "Brief description (optional)",
+                "keyPoints": ["Point 1", "Point 2", "Point 3"],
+                "summary": "Brief summary paragraph",
+                "importantConcepts": ["Concept 1", "Concept 2", "Concept 3"]
+            }}
+            """
+            
+            system_instruction = "You are an expert educational content creator. Generate well-structured, comprehensive notes on the given topic. Focus on clarity, accuracy, and educational value."
+            full_prompt = f"{system_instruction}\n\n{prompt}"
+            response = self.model.generate_content(
+                contents=full_prompt,
+                generation_config=types.GenerationConfig(
+                    # Add other config params here if needed
+                )
+            )
+            
+            logger.info(f"Raw AI response for notes (no context): {getattr(response, 'text', repr(response))}")
+            
+            # Try to parse JSON response
+            try:
+                import json
+                import re
+                
+                # Clean the response text to extract JSON
+                response_text = response.text.strip()
+                
+                # Remove markdown code blocks if present
+                if response_text.startswith('```json'):
+                    response_text = response_text[7:]  # Remove ```json
+                if response_text.startswith('```'):
+                    response_text = response_text[3:]   # Remove ```
+                if response_text.endswith('```'):
+                    response_text = response_text[:-3]  # Remove trailing ```
+                
+                # Try to find JSON array in the text
+                json_match = re.search(r'\[.*\]', response_text, re.DOTALL)
+                if json_match:
+                    response_text = json_match.group(0)
+                
+                notes_data = json.loads(response_text)
+                if isinstance(notes_data, list):
+                    # Add IDs to each note
+                    for i, note in enumerate(notes_data, 1):
+                        note['id'] = i
+                    return notes_data
+                else:
+                    # If not a list, wrap in array
+                    notes_data['id'] = 1
+                    return [notes_data]
+            except (json.JSONDecodeError, AttributeError) as e:
+                logger.error(f"JSON parsing failed (no context): {e}")
+                # If JSON parsing fails, return as text format
+                cleaned = clean_content(response.text)
+                return [{"id": 1, "type": "Text", "content": cleaned}]
+ 
+        except Exception as e:
+            logger.error(f"Error generating notes: {e}")
+            return [{"id": 1, "type": "Text", "content": "Sorry, there was an error generating the notes."}]

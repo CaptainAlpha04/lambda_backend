@@ -47,33 +47,41 @@ async def generate_exercise(request: ExerciseRequest):
     try:
         logger.info(f"Received generate_exercise request: {request}")
         exercise_generator = GenerateExercise(request.userId)
-        exercises = exercise_generator.generate_exercise_with_context(
-            topic=request.topic,
-            exercise_type=request.exercise_type,
-            num_questions=request.num_questions,
-            difficulty_level=request.difficulty_level
-        )
-        logger.info(f"Generated exercises: {exercises}")
-        # If MCQ, parse to array
-        if request.exercise_type.lower() in ["multiple choice", "mcq", "mcqs"]:
-            if isinstance(exercises, str):
-                exercises = parse_mcq_text(exercises)
-        # If True/False, parse to array
-        elif request.exercise_type.lower() in ["true/false", "true_false", "true false", "tf"]:
-            if isinstance(exercises, str):
-                exercises = parse_true_false_text(exercises)
-        # If SQS, parse to array
-        elif request.exercise_type.lower() in ["short answer", "short_questions", "short question", "sqs"]:
-            if isinstance(exercises, str):
-                exercises = parse_sqs_text(exercises)
-        # If LQS, parse to array
-        elif request.exercise_type.lower() in ["long questions", "long_questions", "long question", "lqs"]:
-            if isinstance(exercises, str):
-                exercises = parse_lqs_text(exercises)
-        # If Fill in the Blanks, parse to array
-        elif request.exercise_type.lower() in ["fill in the blanks", "fill_blanks", "fill blank", "blanks"]:
-            if isinstance(exercises, str):
-                exercises = parse_blanks_text(exercises)
+        
+        # Handle notes generation separately
+        if request.exercise_type.lower() in ["notes generation", "notes", "note generation"]:
+            exercises = exercise_generator.generate_notes_with_context(
+                topic=request.topic,
+                num_notes=request.num_questions,
+                difficulty_level=request.difficulty_level
+            )
+        else:
+            exercises = exercise_generator.generate_exercise_with_context(
+                topic=request.topic,
+                exercise_type=request.exercise_type,
+                num_questions=request.num_questions,
+                difficulty_level=request.difficulty_level
+            )
+            # If MCQ, parse to array
+            if request.exercise_type.lower() in ["multiple choice", "mcq", "mcqs"]:
+                if isinstance(exercises, str):
+                    exercises = parse_mcq_text(exercises)
+            # If True/False, parse to array
+            elif request.exercise_type.lower() in ["true/false", "true_false", "true false", "tf"]:
+                if isinstance(exercises, str):
+                    exercises = parse_true_false_text(exercises)
+            # If SQS, parse to array
+            elif request.exercise_type.lower() in ["short answer", "short_questions", "short question", "sqs"]:
+                if isinstance(exercises, str):
+                    exercises = parse_sqs_text(exercises)
+            # If LQS, parse to array
+            elif request.exercise_type.lower() in ["long questions", "long_questions", "long question", "lqs"]:
+                if isinstance(exercises, str):
+                    exercises = parse_lqs_text(exercises)
+            # If Fill in the Blanks, parse to array
+            elif request.exercise_type.lower() in ["fill in the blanks", "fill_blanks", "fill blank", "blanks"]:
+                if isinstance(exercises, str):
+                    exercises = parse_blanks_text(exercises)
 
         if not exercises:
             exercises = "Sorry, no exercises could be generated."
@@ -97,31 +105,40 @@ async def generate_simple_exercise(request: ExerciseRequest):
     """Generate exercises without book context"""
     try:
         exercise_generator = GenerateExercise(request.userId)
-        exercises = exercise_generator.generate_exercise_without_context(
-            topic=request.topic,
-            exercise_type=request.exercise_type,
-            num_questions=request.num_questions
-        )
-        # If MCQ, parse to array
-        if request.exercise_type.lower() in ["multiple choice", "mcq", "mcqs"]:
-            if isinstance(exercises, str):
-                exercises = parse_mcq_text(exercises)
-        # If True/False, parse to array
-        elif request.exercise_type.lower() in ["true/false", "true_false", "true false", "tf"]:
-            if isinstance(exercises, str):
-                exercises = parse_true_false_text(exercises)
-        # If SQS, parse to array
-        elif request.exercise_type.lower() in ["short answer", "short_questions", "short question", "sqs"]:
-            if isinstance(exercises, str):
-                exercises = parse_sqs_text(exercises)
-        # If LQS, parse to array
-        elif request.exercise_type.lower() in ["long questions", "long_questions", "long question", "lqs"]:
-            if isinstance(exercises, str):
-                exercises = parse_lqs_text(exercises)
-        # If Fill in the Blanks, parse to array
-        elif request.exercise_type.lower() in ["fill in the blanks", "fill_blanks", "fill blank", "blanks"]:
-            if isinstance(exercises, str):
-                exercises = parse_blanks_text(exercises)
+        
+        # Handle notes generation separately
+        if request.exercise_type.lower() in ["notes generation", "notes", "note generation"]:
+            exercises = exercise_generator.generate_notes_without_context(
+                topic=request.topic,
+                num_notes=request.num_questions
+            )
+        else:
+            exercises = exercise_generator.generate_exercise_without_context(
+                topic=request.topic,
+                exercise_type=request.exercise_type,
+                num_questions=request.num_questions
+            )
+            # If MCQ, parse to array
+            if request.exercise_type.lower() in ["multiple choice", "mcq", "mcqs"]:
+                if isinstance(exercises, str):
+                    exercises = parse_mcq_text(exercises)
+            # If True/False, parse to array
+            elif request.exercise_type.lower() in ["true/false", "true_false", "true false", "tf"]:
+                if isinstance(exercises, str):
+                    exercises = parse_true_false_text(exercises)
+            # If SQS, parse to array
+            elif request.exercise_type.lower() in ["short answer", "short_questions", "short question", "sqs"]:
+                if isinstance(exercises, str):
+                    exercises = parse_sqs_text(exercises)
+            # If LQS, parse to array
+            elif request.exercise_type.lower() in ["long questions", "long_questions", "long question", "lqs"]:
+                if isinstance(exercises, str):
+                    exercises = parse_lqs_text(exercises)
+            # If Fill in the Blanks, parse to array
+            elif request.exercise_type.lower() in ["fill in the blanks", "fill_blanks", "fill blank", "blanks"]:
+                if isinstance(exercises, str):
+                    exercises = parse_blanks_text(exercises)
+        
         return {"exercises": exercises}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -229,6 +246,32 @@ async def save_exercise(
                     "answer": ex.get("answer", "")
                 }
                 supabase.table("flashcards").insert(flashcard).execute()
+        elif exerciseType.lower() in ["notes generation", "notes", "note generation"]:
+            print(f"Saving {len(exerciseData)} notes to database...")
+            print(f"Notes data structure: {exerciseData}")
+            for i, ex in enumerate(exerciseData):
+                print(f"Processing note {i+1}: {ex}")
+                if not ex.get("title"):
+                    print(f"Skipping note {i+1} - no title found")
+                    continue
+                note = {
+                    "grade": grade,
+                    "subject": subject,
+                    "topic": topic,
+                    "sub_topic": sub_topic,
+                    "title": ex.get("title", ""),
+                    "subtitle": ex.get("subtitle", ""),
+                    "key_points": ex.get("keyPoints", []),  # Store as JSON
+                    "summary": ex.get("summary", ""),
+                    "important_concepts": ex.get("importantConcepts", [])  # Store as JSON
+                }
+                print(f"Note to save: {note}")
+                try:
+                    result = supabase.table("notes").insert(note).execute()
+                    print(f"Successfully saved note: {ex.get('title', 'Unknown')}")
+                except Exception as e:
+                    print(f"Error saving note {ex.get('title', 'Unknown')}: {e}")
+                    # Continue with other notes even if one fails
         else:
             print("Saving as generic exercise:", exerciseData)
         return {"message": "Exercises saved successfully!"}

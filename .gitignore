@@ -19,6 +19,7 @@ logs/
 *.out
 *.pid
 venv/
+my_env/
 # OS
 .DS_Store
 Thumbs.db
